@@ -48,10 +48,13 @@
     "compression": "^1.7.4",
     "contentful": "^8.5.7",
     "cors": "^2.8.5",
+    "feathers-hooks-common": "^5.0.6",
     "feathers-mongoose": "^8.3.1",
     "helmet": "^4.3.1",
+    "lodash": "^4.17.21",
     "mongodb-core": "^3.2.7",
     "mongoose": "^5.11.9",
+    "mustache": "^4.2.0",
     "serve-favicon": "^2.5.0",
     "winston": "^3.0.0"
   },

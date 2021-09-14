@@ -7,7 +7,20 @@ module.exports = function (app) {
   const mongooseClient = app.get('mongooseClient');
   const { Schema } = mongooseClient;
   const schema = new Schema({
-    text: { type: String, required: true }
+    contentId: { type: String, required: true },
+    steps: {
+      type: [{
+        stepContentId: String,
+        stepType: String,
+        skip: Boolean,
+        key: String,
+        options: [String],
+        value: Schema.Types.Mixed
+      }]
+    },
+    userToken: { type: String },
+    userId: Schema.Types.ObjectId,
+    isDone: { type: Boolean }
   }, {
     timestamps: true
   });

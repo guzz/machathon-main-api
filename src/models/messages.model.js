@@ -1,13 +1,26 @@
-// users-model.js - A mongoose model
-//
+// messages-model.js - A mongoose model
+// 
 // See http://mongoosejs.com/docs/models.html
 // for more of what you can do here.
 module.exports = function (app) {
-  const modelName = 'users';
+  const modelName = 'messages';
   const mongooseClient = app.get('mongooseClient');
-  const schema = new mongooseClient.Schema({
-  
-  
+  const { Schema } = mongooseClient;
+  const schema = new Schema({
+    text: { type: String, required: true },
+    userFrom: { type: Schema.Types.ObjectId },
+    userTo: { type: Schema.Types.ObjectId },
+    wizardId: { type: Schema.Types.ObjectId },
+    transport: {
+      type: String,
+      enum: [
+        'api',
+        'telegram'
+      ]
+    },
+    tokenTo: { type: String },
+    tokenFrom: { type: String },
+    options: [String]
   }, {
     timestamps: true
   });
@@ -18,5 +31,5 @@ module.exports = function (app) {
     mongooseClient.deleteModel(modelName);
   }
   return mongooseClient.model(modelName, schema);
-
+  
 };

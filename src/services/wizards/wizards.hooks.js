@@ -1,23 +1,40 @@
 
 
+const getContent = require('./hooks/get-content');
+
+const stepAction = require('./hooks/step-action');
+
+const wizardPatch = require('./hooks/wizard-patch');
+const { fastJoin } = require('feathers-hooks-common');
+
+const itemResolvers = {
+  payload: () => async (wizard) => {
+    const payload = {};
+    wizard.steps.filter(step => step.value).forEach(step => {
+      payload[step.key] = step.value;
+    });
+    wizard.payload = payload;
+  }
+};
+
 module.exports = {
   before: {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [getContent()],
     update: [],
-    patch: [],
+    patch: [wizardPatch()],
     remove: []
   },
 
   after: {
-    all: [],
+    all: [fastJoin(itemResolvers)],
     find: [],
     get: [],
-    create: [],
+    create: [stepAction()],
     update: [],
-    patch: [],
+    patch: [stepAction()],
     remove: []
   },
 

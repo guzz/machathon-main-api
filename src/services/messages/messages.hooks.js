@@ -1,11 +1,15 @@
 
 
+const wizardAction = require('./hooks/wizard-action');
+
+const insertVariables = require('./hooks/insert-variables');
+
 module.exports = {
   before: {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [insertVariables()],
     update: [],
     patch: [],
     remove: []
@@ -15,7 +19,7 @@ module.exports = {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [wizardAction()],
     update: [],
     patch: [],
     remove: []

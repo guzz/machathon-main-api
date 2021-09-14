@@ -10,6 +10,8 @@
     "delivery": "3HYisWUssECUy7yQS7sPzZu8xJ6srh9QJT42afwgxSw",
     "preview": "0YURMxI9mYiOdGmZxiQnJ79W77v7wbRuSIHrWKyDb_Y"
   },
+  "notify-secret": "qouireqpoiuyerpoqwiuerpoqwiuerqwer",
+  "auth-notify-url": "http://localhost:3031",
   "authentication": {
     "entity": null,
     "service": null,
@@ -31,5 +33,5 @@
       "passwordField": "password"
     }
   },
-  "mongodb": "mongodb://localhost:27017/machathon_main_api"
+  "mongodb": "mongodb+srv://machathon-admin:hajW7elxSfLrw0sh@main.hjdrf.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 }
