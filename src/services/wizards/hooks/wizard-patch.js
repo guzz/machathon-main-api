@@ -26,6 +26,7 @@ module.exports = (options = {}) => {
         console.log('currentStep: ', currentStep);
         stepIndex = currentStep.index;
       }
+      data.currentStep = stepIndex;
       data[`steps.${stepIndex}.value`] = stepContent;
     }
     console.log('data: ', data);

@@ -9,7 +9,9 @@ module.exports = (options = {}) => {
     const { user = {} } = params;
     const { payload = {} } = data;
     console.log(data);
-    data.text = Mustache.render(data.text, { user, payload });
+    if (data.text) {
+      data.text = Mustache.render(data.text, { user, payload });
+    }
     return context;
   };
 };

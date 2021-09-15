@@ -8,6 +8,7 @@ module.exports = function (app) {
   const { Schema } = mongooseClient;
   const schema = new Schema({
     contentId: { type: String, required: true },
+    currentStep: { type: Number, default: 0 },
     steps: {
       type: [{
         stepContentId: String,

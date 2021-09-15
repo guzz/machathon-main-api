@@ -104,13 +104,19 @@ const execStep = async ({ app, data, result, params }, stepId) => {
           }
         )
       ).data;
-      const stepIndex = getCurrentStepIndex(result, step);
-      await app.service('wizards').patch(result._id, { message: submitResult, stepIndex }, { payload: submitResult });
+      console.log('submitResult: ', submitResult);
+      const submitData = {
+        message: Object.assign({}, data.message, submitResult),
+        stepIndex
+      };
+      console.log('submitData: ', submitData);
+      await app.service('wizards').patch(result._id, submitData, { payload: submitResult });
     } catch (err) {
       console.log('Submit error');
-      console.log(err.response.data);
+      console.log((err.response && err.response.data) || err);
     }
   } else if (step.type === 'Notification') {
+    console.log('step notification');
     await app.service('messages').create({
       text: step.text,
       userTo: data.message.userFrom,
@@ -122,12 +128,19 @@ const execStep = async ({ app, data, result, params }, stepId) => {
     }, {
       payload: params.payload
     });
-    await app.service('wizards').patch(result._id, { message: true });
+    const submitData = {
+      message: Object.assign({}, data.message, { text: 'success' }),
+      stepIndex
+    };
+    console.log('submitData: ', submitData);
+    await app.service('wizards').patch(result._id, submitData);
   }
 };
 
 const finishWizard = async ({ app, data, result, params }) => {
-  result = await app.service('wizards').patch({ isDone: true });
+  console.log('finishWizard function');
+  result = await app.service('wizards').patch(result._id, { isDone: true });
+  console.log('data: ', data);
   await app.service('messages').create({
     userTo: data.message.userFrom,
     tokenTo: data.message.tokenFrom,
@@ -147,7 +160,10 @@ module.exports = (options = {}) => {
     if (method === 'created') {
       await app.service('messages').patch(data.message._id, { wizardId: result._id });
     }
-    const currentStep = result.steps.filter(s => !s.value)[0];
+    let currentStep = result.steps.filter(s => !s.value)[0];
+    if (result.currentStep) {
+      currentStep = result.steps[result.currentStep];
+    }
     console.log('currentStep: ', currentStep);
     console.log('data: ', data);
     if (!currentStep && data.message) {
