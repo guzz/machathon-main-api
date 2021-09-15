@@ -8,12 +8,18 @@ const wizardPatch = require('./hooks/wizard-patch');
 const { fastJoin } = require('feathers-hooks-common');
 
 const itemResolvers = {
-  payload: () => async (wizard) => {
-    const payload = {};
-    wizard.steps.filter(step => step.value).forEach(step => {
-      payload[step.key] = step.value;
-    });
-    wizard.payload = payload;
+  joins: {
+    payload: () => (wizard) => {
+      console.log('payload resolver');
+      const payload = {};
+      console.log('wizards: ', wizard.steps.filter(step => step.value));
+      wizard.steps.filter(step => step.value).forEach(step => {
+        payload[step.key] = step.value;
+        console.log('step: ', step);
+      });
+      console.log('payload: ', payload);
+      return wizard.payload = payload;
+    }
   }
 };
 

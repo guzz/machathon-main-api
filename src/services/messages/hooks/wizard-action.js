@@ -7,7 +7,7 @@ const axios = require('axios');
 module.exports = (options = {}) => {
   return async context => {
     const { app, result, params } = context;
-    const { headers } = params;
+    const { headers, payload = {} } = params;
     if (result.userFrom || result.tokenFrom) {
       console.log('user message');
       try {
@@ -23,7 +23,7 @@ module.exports = (options = {}) => {
     } else {
       console.log('robot message');
       const notifyUrl = app.get('auth-notify-url') + '/notify';
-      await axios.post(notifyUrl, result, {
+      await axios.post(notifyUrl, Object.assign({}, result, payload), {
         headers: {
           notifySecret: app.get('notify-secret')
         }

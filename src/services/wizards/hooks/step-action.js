@@ -1,11 +1,74 @@
 // Use this hook to manipulate incoming or outgoing data.
 // For more information on hooks see: http://docs.feathersjs.com/api/hooks.html
 const axios = require('axios');
+const get = require('lodash/get');
 const Mustache = require('mustache');
 
-const execStep = async ({ app, data, result, params }, step) => {
-  const { headers } = params;
+const getCurrentStepIndex = (wizard, step) => {
+  const stepsWithIndex = wizard.steps.map((s, i) => {
+    return {
+      ...s,
+      index: i
+    };
+  }).filter(s => s.stepContentId === step.id)[0];
+  const stepIndex = stepsWithIndex.index;
+  return stepIndex;
+};
+
+const conditionsMatch = {
+  contains: ({ from, value }) => from.includes(value),
+  'is equal to': ({ from, value }) => from == value,
+  'is greater then': ({ from, value }) => from > value,
+  'is greater or equal': ({ from, value }) => from >= value,
+  'is lower then': ({ from, value }) => from < value,
+  'is lower or equal': ({ from, value }) => from <= value
+};
+
+const checkIfMatchCondition = ({ payload, user }, condition) => {
+  console.log('checkIfMatchCondition function');
+  console.log('payload: ', payload);
+  console.log('user: ', user);
+  const from = get({ payload, user }, condition.from);
+  console.log('condition: ', condition);
+  console.log('from: ', from);
+  const value = condition.value;
+  console.log('value: ', value);
+  const isMatch = conditionsMatch[condition.comparison]({ from, value });
+  console.log('isMatch: ', isMatch);
+  return isMatch;
+};
+
+const execStep = async ({ app, data, result, params }, stepId) => {
+  const step = await app.service('get-content').get(stepId);
+  const stepIndex = getCurrentStepIndex(result, step);
+  const nextStep = result.steps[stepIndex + 1];
   console.log('exec step: ', step);
+  console.log('result :', result);
+  if (step.conditions && step.conditions.length > 0) {
+    const matches = step.conditions.map((condition) => {
+      return checkIfMatchCondition(
+        {
+          payload: result.payload,
+          user: params.user || {}
+        },
+        condition
+      );
+    }).filter(v => !!v)[0];
+    if (!matches) {
+      if (!nextStep) {
+        return finishWizard({ app, data, result, params });
+      } else {
+        return execStep({ app, data, result, params }, nextStep.stepContentId);
+      }
+    }
+  }
+  if (result.steps[stepIndex].value) {
+    if (!nextStep) {
+      return finishWizard({ app, data, result, params });
+    } else {
+      return execStep({ app, data, result, params }, nextStep.stepContentId);
+    }
+  }
   if (step.type === 'Input') {
     await app.service('messages').create({
       text: step.text,
@@ -15,35 +78,37 @@ const execStep = async ({ app, data, result, params }, step) => {
       transport: data.message.transport,
       options: step.userOptions || [],
       payload: result.payload
+    }, {
+      payload: params.payload
     });
   } else if (step.type === 'Submit') {
-    const payload = {};
-    result.steps.filter(s => {
-      return s.type === 'Input' && s.value;
-    }).forEach(step => {
-      payload[step.key] = step.value;
-    });
+    console.log('step submit');
+    const endPoint = Mustache.render(
+      step.submitEndpoint,
+      {
+        authNotify: app.get('auth-notify-url')
+      }
+    );
+    const payload = result.payload;
+    console.log('endPoint: ', endPoint);
+    console.log('payload: ', payload);
     try {
-      const result = (
+      const submitResult = (
         await axios.post(
-          Mustache.render(
-            step.submitEndpoint,
-            {
-              authNotify: app.get('auth-notify-url')
-            }
-          ),
-          { ...payload },
+          endPoint,
+          payload,
           {
             headers: {
-              ...headers,
               notifySecret: app.get('notify-secret')
             }
           }
         )
       ).data;
-      await app.service('wizards').patch(result._id, { message: result });
+      const stepIndex = getCurrentStepIndex(result, step);
+      await app.service('wizards').patch(result._id, { message: submitResult, stepIndex }, { payload: submitResult });
     } catch (err) {
-      console.log(err);
+      console.log('Submit error');
+      console.log(err.response.data);
     }
   } else if (step.type === 'Notification') {
     await app.service('messages').create({
@@ -54,22 +119,42 @@ const execStep = async ({ app, data, result, params }, step) => {
       transport: data.message.transport,
       options: step.userOptions || [],
       payload: result.payload
+    }, {
+      payload: params.payload
     });
     await app.service('wizards').patch(result._id, { message: true });
   }
 };
+
+const finishWizard = async ({ app, data, result, params }) => {
+  result = await app.service('wizards').patch({ isDone: true });
+  await app.service('messages').create({
+    userTo: data.message.userFrom,
+    tokenTo: data.message.tokenFrom,
+    wizardId: null,
+    transport: data.message.transport,
+    payload: result.payload
+  }, {
+    payload: params.payload
+  });
+};
 // eslint-disable-next-line no-unused-vars
 module.exports = (options = {}) => {
   return async context => {
+    console.log('step action');
     const { data, result, method, app } = context;
     console.log('exec step: ', method);
     if (method === 'created') {
       await app.service('messages').patch(data.message._id, { wizardId: result._id });
     }
     const currentStep = result.steps.filter(s => !s.value)[0];
-    console.log(currentStep);
-    const stepContent = await app.service('get-content').get(currentStep.stepContentId);
-    execStep(context, stepContent);
+    console.log('currentStep: ', currentStep);
+    console.log('data: ', data);
+    if (!currentStep && data.message) {
+      await finishWizard(context);
+    } else if (data.message) {
+      await execStep(context, currentStep.stepContentId);
+    }
     return context;
   };
 };
