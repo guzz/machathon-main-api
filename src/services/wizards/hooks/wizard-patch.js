@@ -22,7 +22,7 @@ module.exports = (options = {}) => {
             ...s,
             index: i
           };
-        }).filter(s => !s.value)[0];
+        }).filter(s => !s.value && (!currentWizard.currentStep || s.index >= currentWizard.currentStep))[0];
         console.log('currentStep: ', currentStep);
         stepIndex = currentStep.index;
       }

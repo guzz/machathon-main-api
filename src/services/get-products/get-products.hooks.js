@@ -1,17 +1,8 @@
-// Application hooks that run for every service
+
 
 module.exports = {
   before: {
-    all: [
-      context => {
-        const { params, app } = context;
-        const { headers } = params;
-        if (headers && headers.notifysecret === app.get('notify-secret')) {
-          params.provider = null;
-        }
-        return context;
-      }
-    ],
+    all: [],
     find: [],
     get: [],
     create: [],

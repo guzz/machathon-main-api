@@ -1,5 +1,6 @@
 {
   "host": "machathon-main-api-app.feathersjs.com",
   "port": "PORT",
-  "auth-notify-url": "https://sales-buddy-auth-notify.herokuapp.com"
+  "auth-notify-url": "https://sales-buddy-auth-notify.herokuapp.com",
+  "main-api-url": "https://sales-buddy-main-api.herokuapp.com"
 }

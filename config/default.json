@@ -12,6 +12,8 @@
   },
   "notify-secret": "qouireqpoiuyerpoqwiuerpoqwiuerqwer",
   "auth-notify-url": "http://localhost:3031",
+  "main-api-url": "http://localhost:3030",
+  "commercetools-url": "https://commercetools-requests.herokuapp.com",
   "authentication": {
     "entity": null,
     "service": null,

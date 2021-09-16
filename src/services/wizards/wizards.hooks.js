@@ -12,7 +12,15 @@ const itemResolvers = {
     payload: () => (wizard) => {
       const payload = {};
       wizard.steps.filter(step => step.value).forEach(step => {
-        payload[step.key] = step.value;
+        if (!step.key) {
+          if (payload.submit) {
+            payload.submit.push(step.value);
+          } else {
+            payload.submit = [step.value];
+          }
+        } else {
+          payload[step.key] = step.value;
+        }
       });
       return wizard.payload = payload;
     }

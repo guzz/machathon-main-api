@@ -10,7 +10,7 @@ const getCurrentStepIndex = (wizard, step) => {
       ...s,
       index: i
     };
-  }).filter(s => s.stepContentId === step.id)[0];
+  }).filter(s => s.stepContentId === step.id && s.index >= wizard.currentStep)[0];
   const stepIndex = stepsWithIndex.index;
   return stepIndex;
 };
@@ -40,10 +40,13 @@ const checkIfMatchCondition = ({ payload, user }, condition) => {
 
 const execStep = async ({ app, data, result, params }, stepId) => {
   const step = await app.service('get-content').get(stepId);
+  const wizard = await app.service('get-content').get(result.contentId);
   const stepIndex = getCurrentStepIndex(result, step);
   const nextStep = result.steps[stepIndex + 1];
   console.log('exec step: ', step);
-  console.log('result :', result);
+  console.log('result:', result);
+  console.log('stepIndex:', stepIndex);
+  console.log('nextStep:', nextStep);
   if (step.conditions && step.conditions.length > 0) {
     const matches = step.conditions.map((condition) => {
       return checkIfMatchCondition(
@@ -86,15 +89,21 @@ const execStep = async ({ app, data, result, params }, stepId) => {
     const endPoint = Mustache.render(
       step.submitEndpoint,
       {
-        authNotify: app.get('auth-notify-url')
+        authNotify: app.get('auth-notify-url'),
+        mainApi: app.get('main-api-url'),
+        commercetoolsApi: app.get('commercetools-url'),
+        ...result.payload
       }
     );
-    const payload = result.payload;
+    const payload = {
+      ...result.payload,
+      ...wizard.defaultPayload
+    };
     console.log('endPoint: ', endPoint);
     console.log('payload: ', payload);
     try {
       const submitResult = (
-        await axios.post(
+        await axios[step.submitMethod || 'post'](
           endPoint,
           payload,
           {
@@ -105,15 +114,48 @@ const execStep = async ({ app, data, result, params }, stepId) => {
         )
       ).data;
       console.log('submitResult: ', submitResult);
+      const messageClone = { ...data.message };
+      delete messageClone.text;
       const submitData = {
-        message: Object.assign({}, data.message, submitResult),
+        message: Object.assign({}, messageClone, submitResult),
         stepIndex
       };
       console.log('submitData: ', submitData);
       await app.service('wizards').patch(result._id, submitData, { payload: submitResult });
     } catch (err) {
+      console.log('fuuuuuuuuuuuuuuuuckeeee');
+      console.log('error result: ', result);
+      if (wizard.defaultPayload.skipErrors && wizard.defaultPayload.skipErrors.includes(stepIndex)) {
+        console.log('skiping errors');
+        const messageClone = { ...data.message };
+        messageClone.text = err.response.data.message;
+        await app.service('wizards').patch(result._id, { message: messageClone, stepIndex }, { payload: err.response.data });
+      } else {
+        const contentError = await app.service('get-content').find({
+          query: {
+            content_type: 'step',
+            'fields.type': 'Error',
+            'fields.errorFor.sys.id': step.id
+          }
+        });
+        if (contentError) {
+          await app.service('messages').create({
+            text: contentError.text,
+            userTo: data.message.userFrom,
+            tokenTo: data.message.tokenFrom,
+            wizardId: result._id,
+            transport: data.message.transport,
+            options: contentError.userOptions || [],
+            payload: result.payload,
+            error: (err.response && err.response.data) || err
+          }, {
+            payload: params.payload
+          });
+          await finishWizard({ app, data, result, params });
+        }
+      }
       console.log('Submit error');
-      console.log((err.response && err.response.data) || err);
+      console.log((err.response && err.response.data) || (err.details && err.details.errors) || err);
     }
   } else if (step.type === 'Notification') {
     console.log('step notification');
@@ -157,7 +199,7 @@ module.exports = (options = {}) => {
     console.log('step action');
     const { data, result, method, app } = context;
     console.log('exec step: ', method);
-    if (method === 'created') {
+    if (method === 'create') {
       await app.service('messages').patch(data.message._id, { wizardId: result._id });
     }
     let currentStep = result.steps.filter(s => !s.value)[0];
